@@ -16,6 +16,7 @@
 #include "file.h"
 #include "fcntl.h"
 
+
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
 static int
@@ -64,6 +65,39 @@ sys_dup(void)
     return -1;
   filedup(f);
   return fd;
+}
+
+uint64 sys_lseek(void) {
+  struct file *f;
+  int offs;
+  int mode;
+
+  if (argfd(0, 0, &f) < 0 || argint(1, &offs) < 0 || argint(2, &mode) < 0) {
+    return -1;
+  }
+  switch (mode) {
+    case SEEK_SET:
+      if (offs < 0 || offs > f->ip->size) {
+        return -1;
+      }
+      f->off = offs;
+      return f->off;
+
+    case SEEK_CUR:
+      if (f->off + offs > f->ip->size || f->off + offs < 0) {
+        return -1;
+      }
+      f->off += offs;
+      return f->off;
+
+    case SEEK_END:
+      if (offs > 0 || f->off + offs < 0) {
+        return -1;
+      }
+      f->off += offs; 
+      return f->off;
+  }
+  return -1;
 }
 
 uint64

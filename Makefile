@@ -119,6 +119,7 @@ UPROGS=\
 	$U/_cat\
 	$U/_echo\
 	$U/_forktest\
+	$U/_find\
 	$U/_grep\
 	$U/_init\
 	$U/_kill\
@@ -132,10 +133,11 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
+	$U/_lseektest\
 
-fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
-
+fs.img: mkfs/mkfs README sTest $(UPROGS)
+	mkfs/mkfs fs.img README sTest $(UPROGS)
+		
 -include kernel/*.d user/*.d
 
 clean: 

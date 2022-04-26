@@ -2,6 +2,7 @@
 
 #include "kernel/types.h"
 #include "user/user.h"
+#include "kernel/stat.h"
 #include "kernel/fcntl.h"
 
 // Parsed command representation
@@ -58,6 +59,7 @@ void
 runcmd(struct cmd *cmd)
 {
   int p[2];
+  int fileDescriptor;
   struct backcmd *bcmd;
   struct execcmd *ecmd;
   struct listcmd *lcmd;
@@ -75,8 +77,18 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit(1);
-    exec(ecmd->argv[0], ecmd->argv);
-    fprintf(2, "exec %s failed\n", ecmd->argv[0]);
+    if((fileDescriptor = open(ecmd->argv[0],0)) != -1){
+      exec(ecmd->argv[0], ecmd->argv);
+    }else{
+      char* path = "/";
+      strcpy(path+1,ecmd->argv[0]);
+      if((fileDescriptor = open(path,0)) != -1)
+        exec(path,ecmd->argv);
+      else{
+        fprintf(2, "exec %s failed\n", ecmd->argv[0]);
+      }
+    }
+    
     break;
 
   case REDIR:
