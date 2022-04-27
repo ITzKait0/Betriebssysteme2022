@@ -26,6 +26,7 @@ int sleep(int);
 int uptime(void);
 int lseek(int fd,int offset,int whence);
 int sysinfo (struct sysinfo *);
+int trace(int tracemaks);
 
 // ulib.c
 int strstr(char *find, char *inString);

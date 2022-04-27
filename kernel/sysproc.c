@@ -107,3 +107,12 @@ uint64 sys_sysinfo(void){
   }
   return copyout(myproc()->pagetable,addr,(char*)&info,sizeof(struct sysinfo));
 }
+
+uint64 sys_trace(void){
+   int tracemask;
+   if(argint(0,&tracemask) < 0){
+     return -1;
+   } 
+   myproc()->tracemask = tracemask;
+   return 0; 
+}
