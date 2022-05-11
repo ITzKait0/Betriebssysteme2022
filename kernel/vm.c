@@ -284,10 +284,12 @@ freewalk(pagetable_t pagetable)
 // Free user memory pages,
 // then free page-table pages.
 void
-uvmfree(pagetable_t pagetable, uint64 sz)
+uvmfree(pagetable_t pagetable, uint64 sz, uint64 stacksize)
 {
   if(sz > 0)
     uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
+  if(stacksize > 0)
+    uvmunmap(pagetable,USRSTACK-stacksize, PGROUNDUP(stacksize)/PGSIZE,1);
   freewalk(pagetable);
 }
 
@@ -298,14 +300,14 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
 int
-uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
+uvmcopy(pagetable_t old, pagetable_t new, uint64 sz, uint64 stacksize)
 {
   pte_t *pte;
   uint64 pa, i;
   uint flags;
   char *mem;
 
-  for(i = 0; i < sz; i += PGSIZE){
+  for(i = sz; i < stacksize; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
@@ -431,4 +433,27 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+
+void printPagetable(pagetable_t pagetable, int level){
+  for(int i = 0;i<512;i++){
+    pte_t tableEntry = pagetable[i];
+    if(tableEntry & PTE_V){
+      for(int i = 0;i<level;i++){
+        printf(".. ");
+      }
+      printf("%d: pte %p pa %p flags %s%s%s%s%s\n",i,tableEntry,PTE2PA(tableEntry),(tableEntry & PTE_U)?"U":"-",(tableEntry & PTE_X)?"X":"-",(tableEntry & PTE_W)?"W":"-",(tableEntry & PTE_R)?"R":"-",(tableEntry & PTE_V)?"V":"-");
+    }
+    if((tableEntry & PTE_V) && (tableEntry & (PTE_R|PTE_W)) == 0){
+      uint64 entry = PTE2PA(tableEntry);
+      pagetable_t subtable = (pagetable_t)entry;
+      printPagetable(subtable,level+1);
+    }
+  }
+}
+
+void vmprint(pagetable_t pagetable){
+  printf("page table %p\n", pagetable);
+  printPagetable(pagetable,0);
 }
