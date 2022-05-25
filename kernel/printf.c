@@ -140,10 +140,11 @@ void backtrace(void){
   uint64 tempFp = fp;
   uint64 * returnAdress = (uint64 *) (fp-8);
   uint64 * prevFrameAdress = (uint64 *) (fp-16);
-  while(PGROUNDDOWN(fp) < (uint64)prevFrameAdress && (uint64)prevFrameAdress < PGROUNDUP(fp)){
+  printf("backtrace:\n");
+  while(PGROUNDDOWN(fp) < *prevFrameAdress && *prevFrameAdress < PGROUNDUP(fp)){
     printf("%p\n",*returnAdress);
     tempFp = *prevFrameAdress;
-    returnAdress = (uint64 *) (tempFp-8);
+    returnAdress = (uint64 *) (tempFp-8); 
     prevFrameAdress = (uint64 *) (tempFp-16);
   }
 }
