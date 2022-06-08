@@ -441,7 +441,6 @@ itrunc(struct inode *ip)
 void
 stati(struct inode *ip, struct stat *st)
 {
-  printf("%d",ip->type);
   st->dev = ip->dev;
   st->ino = ip->inum;
   st->type = ip->type;
