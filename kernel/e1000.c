@@ -102,7 +102,40 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
-  
+  acquire(&e1000_lock);
+
+  //position where the next package is expected
+  int nextPackagePos = regs[E1000_TDT];
+
+  //Did the network card send a package?
+  if((tx_ring[nextPackagePos].status & E1000_TXD_STAT_DD) == 0){
+    release(&e1000_lock);
+    return -1;
+  }
+
+  //free mbuffer from current descriptor 
+  struct mbuf *lastPacket = tx_mbufs[nextPackagePos];
+  if(lastPacket){
+    mbuffree(lastPacket);
+  }
+
+  //set the descriptor to the new buffer and save the size
+  tx_ring[nextPackagePos].addr = (uint64) m->head;
+  tx_ring[nextPackagePos].length = (uint64) m->len;
+
+  //set command-flags
+  tx_ring[nextPackagePos].cmd |= E1000_TXD_CMD_RS; //report status;
+  tx_ring[nextPackagePos].cmd |= E1000_TXD_CMD_EOP; //end-of-package / last bytes of the package;
+
+  //pointer to the new buffer
+  tx_mbufs[nextPackagePos] = m;
+
+
+  //update the E1000_TDT register
+  regs[E1000_TDT] = (nextPackagePos+1) % TX_RING_SIZE;
+
+  release(&e1000_lock);
+
   return 0;
 }
 
@@ -115,7 +148,38 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
+  acquire(&e1000_lock);
 
+  //position of the last processed package
+  int lastPackagePos = (regs[E1000_RDT]+1) % RX_RING_SIZE;
+
+  //does the current descriptor contain a new package?
+  while(rx_ring[lastPackagePos].status & E1000_RXD_STAT_DD){
+
+    //save buffer length
+    int bufferlength = rx_ring[lastPackagePos].length;
+    mbufput(rx_mbufs[lastPackagePos],bufferlength);
+
+    release(&e1000_lock);
+
+    //transfer buffer to network stack
+    net_rx(rx_mbufs[lastPackagePos]);
+
+    acquire(&e1000_lock);
+
+    //allocate new Buffer
+    rx_mbufs[lastPackagePos] = mbufalloc(0);
+    rx_ring[lastPackagePos].addr = (uint64) rx_mbufs[lastPackagePos]->head;
+
+    //clear status-byte
+    rx_ring[lastPackagePos].status = 0;
+
+    //go to next package
+    regs[E1000_RDT] = lastPackagePos;
+    lastPackagePos = (regs[E1000_RDT]+1) % RX_RING_SIZE;
+  }
+
+  release(&e1000_lock);
 }
 
 void
